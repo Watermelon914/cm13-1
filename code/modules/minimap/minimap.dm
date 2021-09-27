@@ -92,7 +92,7 @@ GLOBAL_LIST_INIT(jobs_to_icon, list(
 ))
 
 /datum/game_map/proc/get_data(var/atom/movable/A, var/name, var/icon, var/color)
-	return list(
+	return list(list(
 		"ref" = REF(A),
 		"name" = name,
 		"coord" = get_coord(A),
@@ -100,7 +100,7 @@ GLOBAL_LIST_INIT(jobs_to_icon, list(
 		"color" = color,
 		"width" = A.bound_width/world.icon_size,
 		"height" = A.bound_height/world.icon_size,
-	)
+	))
 
 /datum/game_map/proc/update_map()
 	coord_data = list()
@@ -109,36 +109,31 @@ GLOBAL_LIST_INIT(jobs_to_icon, list(
 			if(H.z != zlevel.z_value)
 				continue
 
-			coord_data += list(
-				get_data(H, H.name, GLOB.jobs_to_icon[H.job] || "user", "#ffffff")
-			)
+			coord_data += get_data(H, H.name, GLOB.jobs_to_icon[H.job] || "user", "#ffffff")
+
 
 	if(flags_minimap & MINIMAP_FLAG_SHOW_CP)
 		for(var/obj/structure/resource_node/RN as anything in GLOB.resource_nodes)
 			if(RN.z != zlevel.z_value)
 				continue
 
-			coord_data += list(
-				get_data(RN, "Objective", "bullseye", "#0000ff")
-			)
+			coord_data += get_data(RN, "Objective", "bullseye", "#0000ff")
 
 	if(flags_minimap & MINIMAP_FLAG_SHOW_XENO)
 		for(var/mob/living/carbon/Xenomorph/X as anything in GLOB.living_xeno_list)
 			if(X.z != zlevel.z_value)
 				continue
 
-			coord_data += list(
-				get_data(X, X.name, "skull", "#ff0000")
-			)
+			coord_data += get_data(X, X.name, "skull", "#ff0000")
+
 
 	if(flags_minimap & MINIMAP_FLAG_SHOW_LOOT)
 		for(var/obj/structure/closet/crate/loot/L as anything in GLOB.loot_crates)
 			if(L.z != zlevel.z_value)
 				continue
 
-			coord_data += list(
-				get_data(L, L.name, L.opened? "box-open":"box", "#000000")
-			)
+			coord_data += get_data(L, L.name, L.opened? "box-open":"box", "#000000")
+
 
 /datum/game_map/proc/set_generated_map(var/F)
 	get_map_bounds()

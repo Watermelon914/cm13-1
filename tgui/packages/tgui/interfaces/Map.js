@@ -1,167 +1,203 @@
 import { useBackend, useLocalState } from '../backend';
 import { Stack, Icon, Box } from '../components';
 import { Window } from '../layouts';
+import { Component, createRef } from 'inferno';
+import { shallowDiffers } from '../../common/react';
 
-export const Map = (props, context) => {
-  const { data } = useBackend(context);
-  const {
-    map_name,
-    map_size_x,
-    map_size_y,
-    coord_data,
-    icon_size,
-  } = data;
+export class Map extends Component {
+  constructor() {
+    super();
+    this.state = {
+      selectedName: null,
 
-  const [isScrolling, setScrolling] = useLocalState(context, "is_scrolling", false);
-  const [selectedName, setSelectedName] = useLocalState(context, "selected_name", null);
-  const [lastMousePos, setLastMousePos] = useLocalState(context, "last_mouse_pos", null);
+      lastClientX: 0,
+      lastClientY: 0,
+      mapX: 0,
+      mapY: 0,
+    };
 
-  const startDragging = e => {
-    setLastMousePos(null);
-    setScrolling(true);
-  };
+    this.handleMouseDown = this.handleMouseDown.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+  }
 
-  const stopDragging = e => {
-    setScrolling(false);
-  };
+  handleMouseDown(event) {
+    const { clientX, clientY } = event;
+    this.setState({
+      selectedName: null,
+      lastClientX: clientX,
+      lastClientY: clientY,
+    });
 
-  const doDrag = e => {
-    if (isScrolling) {
-      e.preventDefault();
-      const { screenX, screenY } = e;
-      const element = document.getElementById("minimap");
-      if (lastMousePos) {
-        element.scrollLeft = element.scrollLeft + lastMousePos[0] - screenX;
-        element.scrollTop = element.scrollTop + lastMousePos[1] - screenY;
-      }
-      setLastMousePos([screenX, screenY]);
-    }
-  };
+    window.addEventListener('mouseup', this.handleMouseUp);
+    window.addEventListener('mousemove', this.handleMouseMove);
+  }
 
-  return (
-    <Window
-      width={600}
-      height={600}
-      theme="engi"
-    >
-      <Window.Content id="minimap">
-        <Stack justify="space-around">
+  handleMouseUp(event) {
+    window.removeEventListener('mouseup', this.handleMouseUp);
+    window.removeEventListener('mousemove', this.handleMouseMove);
+  }
+
+  handleMouseMove(event) {
+    const { clientX, clientY } = event;
+
+    this.setState(state => {
+      return {
+        mapX: state.mapX + clientX - state.lastClientX,
+        mapY: state.mapY + clientY - state.lastClientY,
+        lastClientX: clientX,
+        lastClientY: clientY,
+      };
+    });
+  }
+
+  render() {
+    const { data } = useBackend(this.context);
+    const {
+      map_name,
+      map_size_x,
+      map_size_y,
+      coord_data,
+      icon_size,
+    } = data;
+    const {
+      mapX,
+      mapY,
+      selectedName,
+    } = this.state;
+    const {
+      x,
+      y,
+    } = this.props;
+
+    return (
+      <Window
+        width={600}
+        height={600}
+        theme="engi"
+      >
+        <Window.Content>
+          <Stack justify="space-around">
+            <Stack.Item>
+              <Box
+                className="Minimap__Map"
+                style={{
+                  'background-image': `url('minimap.${map_name}.png')`,
+                  'background-repeat': "no-repeat",
+                  'width': `${map_size_x}px`,
+                  'height': `${map_size_y}px`,
+                  'transform': `translate(${x || mapX}px, ${y || mapY}px)`,
+                }}
+                position="absolute"
+                onMouseDown={this.handleMouseDown}
+              >
+                {coord_data.map(val => {
+                  return (
+                    <Object
+                      key={val.ref}
+                      name={val.name}
+                      opacity={!selectedName
+                        || selectedName === val.ref? 1 : 0.5}
+                      selected={selectedName === val.ref}
+                      coord={[
+                        val.coord[0]*icon_size,
+                        (map_size_y/icon_size-val.coord[1])*icon_size,
+                      ]}
+                      onMouseDown={e => {
+                        this.setState({ selectedName: val.ref });
+                        e.stopPropagation();
+                      }}
+                      icon={val.icon}
+                      color={val.color}
+                      obj_ref={val.ref}
+                      obj_width={val.width}
+                      obj_height={val.height}
+                    />
+                  );
+                })}
+              </Box>
+            </Stack.Item>
+          </Stack>
+        </Window.Content>
+      </Window>
+    );
+  }
+}
+
+export class Object extends Component {
+  constructor() {
+    super();
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return shallowDiffers(nextProps, this.props)
+      || shallowDiffers(nextState, this.state);
+  }
+
+  render() {
+    const { data } = useBackend(this.context);
+    const { icon_size } = data;
+    const {
+      name,
+      coord,
+      icon,
+      color,
+      obj_ref,
+      obj_width,
+      obj_height,
+      selected,
+      ...rest
+    } = this.props;
+
+    return (
+      <Box
+        className="Minimap__Player"
+        width="10%"
+        {...rest}
+        position="absolute"
+        left={`${coord[0]-icon_size}px`}
+        top={`${coord[1]-((obj_height-1)*icon_size)}px`}
+      >
+        <Stack vertical fill>
           <Stack.Item>
             <Box
-              className="Minimap__Map"
-              style={{
-                'background-image': `url('minimap.${map_name}.png')`,
-                'background-repeat': "no-repeat",
-                'width': `${map_size_x}px`,
-                'height': `${map_size_y}px`,
-              }}
+              as="span"
+              className="Minimap__Player_Icon"
               position="absolute"
-              left="5px"
-              top="5px"
-              onClick={() => setSelectedName(null)}
-              onMouseDown={startDragging}
-              onMouseUp={stopDragging}
-              onMouseMove={doDrag}
+              backgroundColor={color}
+              width={`${icon_size*obj_width}px`}
+              height={`${icon_size*obj_height}px`}
+            />
+          </Stack.Item>
+          <Stack.Item
+            className="Minimap__InfoBox"
+            ml={selected === obj_ref
+              ? `${icon_size*obj_width}px`
+              : `${(icon_size*obj_width)/2}px`}
+            mt={selected === obj_ref
+              ? `${icon_size*obj_height}px`
+              : `${(obj_height-1)*icon_size}px`}>
+            <Box
+              position="absolute"
+              px={1}
+              py={1}
+              className={`Minimap__InfoBox${
+                selected === obj_ref? "--detailed" : ""}`}
             >
-              {coord_data.map(val => {
-                return (
-                  <Object
-                    key={val.ref}
-                    name={val.name}
-                    coord={[
-                      val.coord[0]*icon_size,
-                      (map_size_y/icon_size-val.coord[1])*icon_size,
-                    ]}
-                    icon={val.icon}
-                    color={val.color}
-                    obj_ref={val.ref}
-                    obj_width={val.width}
-                    obj_height={val.height}
-                  />
-                );
-              })}
+              <Stack>
+                {selected === obj_ref && (
+                  <Stack.Item>
+                    <Icon name={icon} />
+                  </Stack.Item>
+                )}
+                <Stack.Item>
+                  {name}
+                </Stack.Item>
+              </Stack>
             </Box>
           </Stack.Item>
         </Stack>
-      </Window.Content>
-    </Window>
-  );
-};
-
-export const Object = (props, context) => {
-  const { data } = useBackend(context);
-  const { icon_size } = data;
-  const {
-    name,
-    coord,
-    icon,
-    color,
-    obj_ref,
-    obj_width,
-    obj_height,
-    ...rest
-  } = props;
-
-  const [selectedName, setSelectedName] = useLocalState(context, "selected_name", null);
-  let object_opacity = 1;
-
-  if (selectedName && selectedName !== obj_ref) {
-    object_opacity = 0.4;
+      </Box>
+    );
   }
-
-  return (
-    <Box
-      className="Minimap__Player"
-      opacity={object_opacity}
-      width="10%"
-      onClick={e => {
-        setSelectedName(obj_ref);
-        e.stopPropagation();
-      }}
-      {...rest}
-      position="absolute"
-      left={`${coord[0]-icon_size}px`}
-      top={`${coord[1]-((obj_height-1)*icon_size)}px`}
-    >
-      <Stack vertical fill>
-        <Stack.Item>
-          <Box
-            as="span"
-            className="Minimap__Player_Icon"
-            position="absolute"
-            backgroundColor={color}
-            width={`${icon_size*obj_width}px`}
-            height={`${icon_size*obj_height}px`}
-          />
-        </Stack.Item>
-        <Stack.Item
-          className="Minimap__InfoBox"
-          ml={selectedName === obj_ref
-            ? `${icon_size*obj_width}px`
-            : `${(icon_size*obj_width)/2}px`}
-          mt={selectedName === obj_ref
-            ? `${icon_size*obj_height}px`
-            : `${(obj_height-1)*icon_size}px`}>
-          <Box
-            position="absolute"
-            px={1}
-            py={1}
-            className={`Minimap__InfoBox${
-              selectedName === obj_ref? "--detailed" : ""}`}
-          >
-            <Stack>
-              {selectedName === obj_ref && (
-                <Stack.Item>
-                  <Icon name={icon} />
-                </Stack.Item>
-              )}
-              <Stack.Item>
-                {name}
-              </Stack.Item>
-            </Stack>
-          </Box>
-        </Stack.Item>
-      </Stack>
-    </Box>
-  );
-};
+}
