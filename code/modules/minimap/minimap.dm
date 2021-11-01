@@ -80,10 +80,11 @@
 				generated_map.Blend(I, ICON_OVERLAY,\
 					(turf_to_render.x - bounds[BOUND_MIN_X])*icon_size,\
 					(turf_to_render.y - bounds[BOUND_MIN_Y])*icon_size)
+		CHECK_TICK
 
 	generated_map = icon(generated_map, frame=1)
 
-	fcopy(generated_map, "[MINIMAP_FILE_DIR][name].dmi")
+	// fcopy(generated_map, "[MINIMAP_FILE_DIR][name].dmi")
 
 GLOBAL_LIST_INIT(jobs_to_icon, list(
 	JOB_SQUAD_ENGI = "hard-hat",

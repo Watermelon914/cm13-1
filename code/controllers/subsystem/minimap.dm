@@ -17,11 +17,7 @@ SUBSYSTEM_DEF(minimap)
 
 	to_chat(world, SPAN_BOLDNOTICE("Generating minimaps.."))
 	for(var/datum/game_map/GM as anything in minimaps)
-		var/F = file("[MINIMAP_FILE_DIR][GM.name].dmi")
-		if(fexists(F))
-			GM.set_generated_map(F)
-		else
-			GM.generate_map()
+		GM.generate_map()
 	to_chat(world, SPAN_BOLDNOTICE("Generated minimaps."))
 	return ..()
 

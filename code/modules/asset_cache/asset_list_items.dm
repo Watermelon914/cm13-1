@@ -187,8 +187,8 @@
 	for(var/datum/game_map/GM as anything in SSminimap.minimaps)
 		var/asset = GM.generated_map
 		if (!asset)
-			continue
-		asset = fcopy_rsc(asset) //dedupe
+			GM.generate_map()
+			asset = GM.generated_map
 		var/asset_name = sanitize_filename("minimap.[GM.name].png")
 		var/datum/asset_cache_item/ACI = SSassets.transport.register_asset(asset_name, asset)
 		ACI.keep_local_name = TRUE
